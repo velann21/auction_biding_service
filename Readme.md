@@ -96,6 +96,9 @@ Distributed Source:
    docker pull singaravelan21/auction_biding:v0.0.3
     
 
+GO VERSION:
+------------
+go 1.13
 
 
 API Documents:
