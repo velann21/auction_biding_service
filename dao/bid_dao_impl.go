@@ -18,18 +18,28 @@ const (
 	PRODUCTBASEDBID = "addProductBasedBid"
 )
 
+// Logfile to make data Durability
 const (
 	USERDATALOG = "./logfiles/user_data.log"
 	PRODUCTDATALOG = "./logfiles/product_data.log"
 	LASTPROCESSEDUSERDATA = "./logfiles/last_processed_product_data.log"
 	LASTPROCESSEDPRODUCTLOG = "./logfiles/last_processed_user_data.log"
 )
+
+//Read write mutex for user map
 var usersyncMutex sync.RWMutex
+//Read write mutex for product map
 var productsyncMutex sync.RWMutex
+
+//to maintain the record of users based and product based separately
 var userBids = make(map[string][]*requests.BidRequest,0)
 var productBids = make(map[string][]*requests.BidRequest,0)
+
+//To maintain the optimistic lock
 var userBidsVersionTracker = make(map[string]float32,0)
 var productBidsVersionTracker = make(map[string]float32,0)
+
+//Buffered channel for user add and product add
 var addUserBidRecordChan =  make(chan *requests.BidRequest, 100)
 var addProductBidRecordChan =  make(chan *requests.BidRequest, 100)
 
@@ -38,7 +48,7 @@ func (bidDao BidDaoImpl) userBidRecorder(userID string, data *requests.BidReques
 	logrus.Info("userBidRecorder Started")
 	userBid := userBids[userID]
 	userVersion := userBidsVersionTracker[userID]
-
+	//If record for the user is first it creates a new entry
 	if userBid == nil && userVersion == 0{
 		usersyncMutex.RLock()
 		if userBid == nil && userVersion == 0{
@@ -60,6 +70,7 @@ func (bidDao BidDaoImpl) userBidRecorder(userID string, data *requests.BidReques
 		}
 		usersyncMutex.RUnlock()
 	}else{
+		// Else it append the data
 		logrus.WithField("ID",userID).Info("User found creating appending the record to slice")
 		userBid = append(userBid, data)
 		userBids[userID] = userBid
@@ -72,10 +83,16 @@ func (bidDao BidDaoImpl) userBidRecorder(userID string, data *requests.BidReques
 	return nil
 }
 
+
+/**
+This GetWinnerBidService does have the business logics for get the bids winner by item
+*/
 func (bidDao BidDaoImpl) ProductBidRecorder(productID string, data *requests.BidRequest) error{
 	logrus.Info("productBidRecorder Started")
 	productsBid := productBids[productID]
 	productVersion := productBidsVersionTracker[productID]
+
+	//If record for the product is first it creates a new entry and make Heapify the slice
 	if productsBid == nil && productVersion == 0{
 		productsyncMutex.RLock()
 		if productsBid == nil && productVersion == 0 {
@@ -96,11 +113,12 @@ func (bidDao BidDaoImpl) ProductBidRecorder(productID string, data *requests.Bid
 		}
 		productsyncMutex.RUnlock()
 	}else{
+		// Else it append the data and Heapify the slice to get the max bid in O(1)
 		logrus.WithField("ID",productID).Info("Product found creating appending to slice")
 		productsBid = append(productsBid, data)
 		productBids[productID] = productsBid
 		productsyncMutex.Lock()
-		// This will make the heap
+		// This will make the heap to get the record in O(1)
 		CreateHeap(productBids[productID])
 		productVersion := productBidsVersionTracker[productID]
 		productBidsVersionTracker[productID] = productVersion+1
@@ -110,16 +128,28 @@ func (bidDao BidDaoImpl) ProductBidRecorder(productID string, data *requests.Bid
 	return nil
 }
 
+
+/**
+This GetBidByUser
+*/
 func (bidDao BidDaoImpl) GetBidByUser(ctx context.Context, userID string)[]*requests.BidRequest{
 	userBid := userBids[userID]
 	return userBid
 }
 
+
+/**
+This GetBidByItem
+*/
 func (bidDao BidDaoImpl) GetBidByItem(ctx context.Context, productID string) []*requests.BidRequest{
 	productsBID := productBids[productID]
 	return productsBID
 }
 
+
+/**
+This GetWinnerBidByItem
+*/
 func (bidDao BidDaoImpl) GetWinnerBidByItem(ctx context.Context, productID string) *requests.BidRequest{
 	productsBID := productBids[productID]
 	if len(productsBID) >= 2{
@@ -128,6 +158,7 @@ func (bidDao BidDaoImpl) GetWinnerBidByItem(ctx context.Context, productID strin
 	return nil
 }
 
+//Command Pattern
 func (bidDao BidDaoImpl) TakeNewRecord(ctx context.Context, actionType string, data *requests.BidRequest){
 
 	switch actionType {
@@ -147,6 +178,7 @@ func (bidDao BidDaoImpl) TakeNewRecord(ctx context.Context, actionType string, d
 	}
 }
 
+//Command Pattern Executor
 func (bidDao BidDaoImpl) TaskExecutor(){
 	for {
 		select {
@@ -183,6 +215,9 @@ func WriteToLogFile(fileName string, uuid string, id string, req *requests.BidRe
 }
 
 
+/**
+This CreateHeap one by one for the slice
+*/
 func CreateHeap(array []*requests.BidRequest){
 	for i :=2; i<=len(array)-1 ;i++{
 		Insert(array, i)
@@ -190,6 +225,9 @@ func CreateHeap(array []*requests.BidRequest){
 
 }
 
+/**
+This make the Heap form of an array rep
+*/
 func Insert(array []*requests.BidRequest, lastStoredOffset int)*requests.BidRequest{
 	i := lastStoredOffset
 	temp := array[lastStoredOffset]
@@ -201,6 +239,10 @@ func Insert(array []*requests.BidRequest, lastStoredOffset int)*requests.BidRequ
 	return array[1]
 }
 
+
+/**
+This FindMaxBidInHeap to find the max value in heap
+*/
 func FindMaxBidInHeap(productID string) *requests.BidRequest {
 	productsBID := productBids[productID]
 	if len(productsBID) >= 2{

@@ -8,6 +8,9 @@ import (
 	"net/http"
 )
 
+/**
+This UserBidRecorderController is to orchestrate the user bid recorder
+*/
 func UserBidRecorderController(rw http.ResponseWriter, req *http.Request){
 	logrus.Info("UserBidRecorderController started")
 	bidRequest := requests.BidRequest{}
@@ -36,6 +39,9 @@ func UserBidRecorderController(rw http.ResponseWriter, req *http.Request){
 	return
 }
 
+/**
+This GetBidsByItemController is to orchestrate the get bid bu item
+*/
 func GetBidsByItemController(rw http.ResponseWriter, req *http.Request){
 	logrus.Info("GetBidsByItemController Started")
 	successResp := responses.Response{}
@@ -67,6 +73,10 @@ func GetBidsByItemController(rw http.ResponseWriter, req *http.Request){
 
 }
 
+
+/**
+This GetWinnerBidController is to orchestrate the get winner bid
+*/
 func GetWinnerBidController(rw http.ResponseWriter, req *http.Request){
 	logrus.Info("GetWinnerBidController Started")
 	successResp := responses.Response{}
@@ -98,6 +108,9 @@ func GetWinnerBidController(rw http.ResponseWriter, req *http.Request){
 
 }
 
+/**
+This GetBidsByUserController is to orchestrate the get bid by user
+*/
 func GetBidsByUserController(rw http.ResponseWriter, req *http.Request){
 	logrus.Info("GetBidsByUserController Started")
 	successResp := responses.Response{}
