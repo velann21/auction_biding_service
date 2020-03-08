@@ -17,7 +17,7 @@ docker-build-cleanup:
 
 release-tag: build
 
-	cd ../../;ls -a; git tag `cat .version`
+	cd ../; git tag `cat .version`
 	git push --tags
 
 release: release-tag
