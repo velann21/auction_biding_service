@@ -18,7 +18,7 @@ func main() {
 	mainRoutes := r.PathPrefix("/api/v1").Subrouter()
 	routes.BidingRoutes(mainRoutes)
 	routes.InventoryRoutes(mainRoutes)
-	logrus.Info("Server Starting")
+	logrus.Info("Server Started")
 	//Bootingup the server
 	err := http.ListenAndServe(":8080", r)
 	if err != nil{
